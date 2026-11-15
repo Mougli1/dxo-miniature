@@ -1,14 +1,16 @@
-"""Draw the figures of the notes: crops, zooms and side-by-side views, nothing else.
+"""Draw the figures of the notes: crops, zooms and side-by-side views, plus one drawing on top of a crop.
 
     python code/make_figures.py
 
-Inputs:  screenshots/  PhotoLab screenshots: the lake photo, and the night photo with the tool's lines
-         exports/      exports of the night photo
-         test_images/  the four test images
+Inputs:  screenshots/   PhotoLab screenshots: the lake photo, and the night photo with the tool's lines
+         exports/       exports of the night photo
+         test_images/   the four test images
+         test_exports/  PhotoLab's exports of the test images
 Outputs: en/figures/*.png, with English labels
          (and fr/figures/*.png with French labels, if there is a fr/ folder next to en/)
 
-Every enlarged area is framed in white on the picture it comes from.
+Every enlarged area is framed on the picture it comes from.
+The widths written next to the spots of the test images are counted by read_test_exports.py.
 Figures use Fira Sans when it is installed, DejaVu Sans otherwise.
 """
 import os
@@ -22,14 +24,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib import font_manager
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Circle, Rectangle
 
 from make_test_images import DISC_X, DISC_Y
+from read_test_exports import read, spot_width
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTS = ROOT / "exports"
 SCREENSHOTS = ROOT / "screenshots"
 TEST_IMAGES = ROOT / "test_images"
+TEST_EXPORTS = ROOT / "test_exports"
 
 
 def font():
@@ -60,6 +64,16 @@ TEXT = {
         "dashed": "ligne pointillée",
         "lamp": [("N00", "Sans l'effet"), ("N02", "Flou 100, « Circulaire »"), ("N05", "Flou 100, « 6 lamelles »")],
         "zoom": "le disque,\nagrandi",
+        "px": "{} px",
+        "checker_whole": "Le damier, flou à 100",
+        "checker_zoom": "Le cadre bleu, agrandi",
+        "column": [("column_off", "Sans l'effet"), ("column_100", "Flou 100"),
+                   ("column_100_line_moved", "Flou 100, ligne\npointillée au bord")],
+        "disc": [("disc_off", "Sans l'effet"), ("disc_025", "Flou 25"), ("disc_050", "Flou 50"),
+                 ("disc_075", "Flou 75"), ("disc_100", "Flou 100")],
+        "radius_before": "Avant le flou : deux pixels noirs, A et B, et leurs voisins",
+        "radius_after": "Après le flou : l'export de PhotoLab à Flou 100",
+        "radius": "rayon",
     },
     "en": {
         "pct": "{}%",
@@ -74,6 +88,16 @@ TEXT = {
         "dashed": "dashed line",
         "lamp": [("N00", "Without the effect"), ("N02", "Blur 100, “Circular”"), ("N05", "Blur 100, “6 blades”")],
         "zoom": "the disc,\nenlarged",
+        "px": "{} px",
+        "checker_whole": "The checkerboard, blur at 100",
+        "checker_zoom": "The blue frame, enlarged",
+        "column": [("column_off", "Without the effect"), ("column_100", "Blur 100"),
+                   ("column_100_line_moved", "Blur 100, dashed\nline at the edge")],
+        "disc": [("disc_off", "Without the effect"), ("disc_025", "Blur 25"), ("disc_050", "Blur 50"),
+                 ("disc_075", "Blur 75"), ("disc_100", "Blur 100")],
+        "radius_before": "Before the blur: two black pixels, A and B, and their neighbors",
+        "radius_after": "After the blur: PhotoLab's export at Blur 100",
+        "radius": "radius",
     },
 }
 
@@ -85,10 +109,10 @@ def no_axes(ax):
         side.set_visible(False)
 
 
-def frame(ax, box, scale=1.0, lw=1.0):
-    """Draw a white frame around box = (x0, y0, x1, y1)."""
+def frame(ax, box, scale=1.0, lw=1.0, color="white"):
+    """Draw a frame around box = (x0, y0, x1, y1)."""
     x0, y0, x1, y1 = [v * scale for v in box]
-    ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, fill=False, ec="white", lw=lw))
+    ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0, fill=False, ec=color, lw=lw))
 
 
 def save(fig, lang, name):
@@ -241,6 +265,129 @@ def figure_test_images(lang):
     save(fig, lang, "fig_test_images.png")
 
 
+# ====================================================================== the tests: PhotoLab's exports of the test images
+RED, BLUE = "#e03131", "#1971c2"
+ZOOM = (1700, 525, 2300, 975)                    # part of the checkerboard that is enlarged: x0, y0, x1, y1
+COLUMN = (1750, 0, 2250, 1200)                   # the top of the column, down to 40 % of the height
+DISC = (DISC_X - 100, DISC_Y[0] - 100, DISC_X + 100, DISC_Y[0] + 100)      # 200 x 200 pixels around the disc
+
+
+def figure_test_checkerboard(lang):
+    """The whole checkerboard after the effect, and an enlarged part of it where the squares fade out."""
+    t = TEXT[lang]
+    image = read(TEST_EXPORTS / "checkerboard_100.tif")[..., 1]
+    h, w = image.shape
+    x0, y0, x1, y1 = ZOOM
+    fig, axs = plt.subplots(1, 2, figsize=(6.3, 2.5))
+
+    small = image.reshape(h // 5, 5, w // 5, 5).mean(axis=(1, 3))          # 5 times smaller
+    axs[0].imshow(small, cmap="gray", vmin=0, vmax=255, extent=(0, w, h, 0))
+    for height, style in LINES:
+        axs[0].axhline(height * h, color=RED, lw=0.9, ls=style)
+    frame(axs[0], ZOOM, lw=1.2, color=BLUE)
+    axs[0].set_title(t["checker_whole"])
+
+    axs[1].imshow(image[y0:y1, x0:x1], cmap="gray", vmin=0, vmax=255, extent=(x0, x1, y1, y0), interpolation="nearest")
+    axs[1].axhline(0.30 * h, color=RED, lw=0.9)                            # the top solid line
+    axs[1].set_title(t["checker_zoom"])
+
+    for ax in axs:
+        ax.set_xticks([])
+        ax.set_yticks([])
+    for side in axs[1].spines.values():
+        side.set_color(BLUE)
+        side.set_linewidth(1.2)
+    fig.tight_layout(pad=0.4)
+    save(fig, lang, "fig_test_checkerboard.png")
+
+
+def figure_test_column(lang):
+    """The top of the column in three exports, with the width of every spot."""
+    t = TEXT[lang]
+    x0, y0, x1, y1 = COLUMN
+    # the two top lines of the tool in each export; in the last one the dashed line was moved up to the edge
+    lines = {"column_off": [], "column_100": LINES[:2], "column_100_line_moved": [(0.0, "--"), (0.30, "-")]}
+    fig, axs = plt.subplots(1, 3, figsize=(4.6, 3.9), sharey=True)
+    for ax, (name, title) in zip(axs, t["column"]):
+        image = read(TEST_EXPORTS / f"{name}.tif")
+        ax.imshow(image[y0:y1, x0:x1], extent=(0, x1 - x0, y1, y0))
+        for height, style in lines[name]:
+            ax.axhline(max(height * HEIGHT, 5), color="white", lw=1.0, ls=style)     # never right on the edge
+        for cy in DISC_Y:
+            if cy < y1:
+                ax.text(x1 - x0 - 12, cy, t["px"].format(spot_width(image, cy)), color="white", fontsize=7,
+                        ha="right", va="center", bbox=dict(fc="black", ec="none", pad=1.5))
+        ax.set_title(title, fontsize=8)
+        ax.set_xticks([])
+        for side in ("top", "right", "bottom"):
+            ax.spines[side].set_visible(False)
+    ticks = [0, 10, 20, 30, 40]
+    axs[0].set_yticks([p * HEIGHT / 100 for p in ticks])
+    axs[0].set_yticklabels([t["pct"].format(p) for p in ticks])
+    axs[0].set_ylabel(t["height"])
+    fig.tight_layout(pad=0.4, w_pad=0.6)
+    save(fig, lang, "fig_test_column.png")
+
+
+def figure_test_disc(lang):
+    """The disc without the effect and for four positions of the Blur slider, at the same scale."""
+    t = TEXT[lang]
+    x0, y0, x1, y1 = DISC
+    fig, axs = plt.subplots(1, 5, figsize=(6.3, 1.65))
+    for ax, (name, title) in zip(axs, t["disc"]):
+        image = read(TEST_EXPORTS / f"{name}.tif")
+        ax.imshow(image[y0:y1, x0:x1], interpolation="nearest")
+        ax.set_title(title, fontsize=8)
+        ax.set_xlabel(t["px"].format(spot_width(image, DISC_Y[0])), fontsize=8)
+        no_axes(ax)
+    fig.tight_layout(pad=0.3, w_pad=0.5)
+    save(fig, lang, "fig_test_disc.png")
+
+
+# ====================================================================== the algorithm: reading the radius on the disc
+AROUND = (DISC_X - 200, DISC_Y[0] - 100, DISC_X + 200, DISC_Y[0] + 100)    # 400 x 200 pixels around the disc
+RADIUS = 77                                      # radius of the neighbourhoods drawn on the left, in pixels
+ORANGE, SKY = "#ff922b", "#4dabf7"
+
+
+def width_mark(ax, left, right, label):
+    """Under the picture, a line from pixel `left` to pixel `right`, with its length written below."""
+    y = AROUND[3] - AROUND[1] + 12
+    ax.plot([left, left, right, right], [y - 5, y, y, y - 5], color="black", lw=0.8, clip_on=False)
+    ax.text((left + right) / 2, y + 6, label, ha="center", va="top", fontsize=8)
+
+
+def figure_radius(lang):
+    """The disc before the blur, with the neighbours of two black pixels, and the spot it becomes at Blur 100."""
+    t = TEXT[lang]
+    x0, y0, x1, y1 = AROUND
+    cx, cy = DISC_X - x0, DISC_Y[0] - y0             # centre of the disc inside the crop
+    before = read(TEST_IMAGES / "disc.tif")[y0:y1, x0:x1]
+    after = read(TEST_EXPORTS / "disc_100.tif")[y0:y1, x0:x1]
+    fig, axs = plt.subplots(1, 2, figsize=(6.3, 2.0))
+
+    axs[0].imshow(before, interpolation="nearest")
+    for name, x, color in [("A", cx - 60, ORANGE), ("B", cx + 120, SKY)]:
+        axs[0].add_patch(Circle((x, cy), RADIUS, fill=False, ec=color, lw=1.0, ls="--"))
+        axs[0].plot(x, cy, "o", color=color, ms=3)
+        axs[0].text(x, cy + 8, name, color=color, ha="center", va="top", fontsize=8)
+    tip = (cx - 60 - RADIUS * 0.7071, cy - RADIUS * 0.7071)                 # a point of the circle around A
+    axs[0].annotate("", xy=tip, xytext=(cx - 60, cy), arrowprops=dict(arrowstyle="->", color=ORANGE, lw=0.8))
+    axs[0].text(tip[0] + 34, tip[1] + 18, t["radius"], color=ORANGE, fontsize=7, ha="left", va="center")
+    axs[0].set_title(t["radius_before"], fontsize=8)
+
+    axs[1].imshow(after, interpolation="nearest")
+    axs[1].set_title(t["radius_after"], fontsize=8)
+
+    # under each picture, the width of what is not black on the row that goes through the centre
+    for ax, image in zip(axs, (before, after)):
+        lit = np.nonzero(image[cy, :, 1] > 0)[0]
+        width_mark(ax, lit[0], lit[-1] + 1, t["px"].format(len(lit)))
+        no_axes(ax)
+    fig.tight_layout(pad=0.3, w_pad=0.8)
+    save(fig, lang, "fig_radius.png")
+
+
 if __name__ == "__main__":
     for lang in TEXT:
         if not (ROOT / lang).is_dir():           # only the languages that have a notes folder
@@ -250,3 +397,7 @@ if __name__ == "__main__":
         figure_strips(lang)
         figure_lamp(lang)
         figure_test_images(lang)
+        figure_test_checkerboard(lang)
+        figure_test_column(lang)
+        figure_test_disc(lang)
+        figure_radius(lang)

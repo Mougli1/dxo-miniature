@@ -1,9 +1,10 @@
-# DxO PhotoLab "Miniature Effect"
+# Checklist
 
 - [x] Observations on two real photos
 - [x] Hypotheses
-- [ ] Tests on synthetic images (the images are in `test_images/`, the PhotoLab exports are still to do)
-- [ ] Algorithm
+- [x] Tests on synthetic images (the images are in `test_images/`, their PhotoLab exports in `test_exports/`)
+- [x] Algorithm pseudo-code
+- [ ] Algorithm python
 - [ ] Validation on the real photos
 - [ ] Slides
 

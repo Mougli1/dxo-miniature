@@ -9,6 +9,8 @@
 \usepackage{placeins}
 \usepackage{float}
 \usepackage{needspace}
+\usepackage{alltt}
+\usepackage{array}
 \usepackage{enumitem}
 \setlist{itemsep=0.15em, topsep=0.2em, parsep=0pt}  
 \usepackage[font=small,labelfont=bf]{caption}
@@ -102,10 +104,9 @@ All this shows what the effect does, but not how it does it. We are left with th
 \needspace{10\baselineskip}
 \section*{Hypotheses}
 
-One hypothesis per question. Each time, we recall what we observed, say what we assume, then what we should see on a test image if it is true.
-
+Here are the hypotheses we can make from the observations:
 \begin{enumerate}
-  \item On the lake photo, the same branch is sharp inside the band and blurred above it. So we assume that the blur only depends on where we are in the image, and not on what is in it. If that is true, a checkerboard, which is nothing like a photo, should show the same sharp band and the same blurred zones.
+  \item On the lake photo, the same branch is sharp inside the band and blurred above it. So we assume that the amount of blur at a given place only depends on its position in the image, and not on what the photo shows there. If that is true, a checkerboard, which is nothing like a photo, should show the same sharp band and the same blurred zones.
 
   \item On both photos, the blur increases little by little as we move away from the band. We assume that there is no blur at all between the two solid lines, that the blur grows from the solid line up to the dashed line, and that it then stays the same all the way to the edge. This is also what DxO's help says\footnote{\texttt{userguides.dxo.com/en/viewpoint/tools}, section ``Miniature Effect''.}, but we want to check it ourselves. If that is true, on a column of identical white discs, the discs inside the band should stay intact, then the spots should get bigger and bigger, then all be the same.
 
@@ -117,7 +118,7 @@ One hypothesis per question. Each time, we recall what we observed, say what we 
 To test these hypotheses, we need very simple images in which we know every pixel. We made four with \texttt{code/make\_test\_images.py} (folder \texttt{test\_images/}, figure~\ref{fig:test}). They are all 4000~×~3000 pixels like the night photo, and they are TIFF files, because a JPEG would damage the image before the blur is even applied:
 
 \begin{itemize}
-  \item \texttt{gray.tif}: a uniform gray. It is the control, it should not change.
+  \item \texttt{gray.tif}: a uniform gray. It is the control: if the effect only blurs, it should not change.
   \item \texttt{checkerboard.tif}: a black and white checkerboard with 50-pixel squares (hypothesis 1).
   \item \texttt{column.tif}: a column of 15 identical white discs on black, one every 200 pixels from top to bottom (hypothesis 2). With the default settings, there is a disc on each of the four lines.
   \item \texttt{disc.tif}: just one of these discs, about twenty pixels wide, at the top of the image, where the blur is strongest (hypothesis 3).
@@ -130,6 +131,154 @@ To test these hypotheses, we need very simple images in which we know every pixe
   \label{fig:test}
 \end{figure}
 
-For the tests, we will always do the same thing. We first apply the ``6 - No correction'' preset, as the assignment asks, we write down what we expect to see, then we export, changing only one setting at a time. First each image without the effect, to check that it comes out identical. Then the gray, the checkerboard and the column with the blur at 100, then the disc with the slider at 25, 50, 75 and 100, and finally the column after moving one line. That makes about a dozen exports. For each hypothesis, we will conclude that it holds, that it does not hold, or that it only holds in some cases.
+For the tests, we always did the same thing. We first apply the ``6 - No correction'' preset, as the assignment asks, we write down what we expect to see, then we export, changing only one setting at a time. First each image without the effect, to check that it comes out identical. Then the gray, the checkerboard and the column with the blur at 100, then the disc with the slider at 25, 50, 75 and 100, and finally the column after moving one line. The two Blur sliders always have the same value, and the shape stays ``Circular''. That makes twelve exports, stored in \texttt{test\_exports/}. We export them as 16-bit TIFF files, then bring them back to 8 bits like the starting images with \texttt{code/shrink\_exports.py}, because otherwise each file weighs 72~MB.
+
+\FloatBarrier
+\section*{Test results}
+
+The numbers in this part come from \texttt{code/read\_test\_exports.py}, which compares the pixels and counts the width of the spots. The width of a spot is the number of pixels brighter than half the value of the brightest one, counted on the row of pixels that goes through its center.
+
+A first remark is that the gray does not move with the blur at 100, all its pixels are still at 128. On a uniform area, the effect therefore changes nothing, neither the brightness nor the color.
+
+We start with the first hypothesis, which we test with the checkerboard. Between the two solid lines, it is intact: not a single pixel has changed. Above and below it is blurred, and in the same way across the full width (figure~\ref{fig:checker}). So the sharp band is between the two solid lines, as on the night photo, even though the checkerboard is nothing like a photo. Hypothesis 1 holds. What decides the amount of blur is the height in the image.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/fig_test_checkerboard.png}
+  \caption{The checkerboard exported with the blur at 100. Left, the whole image, with the four lines of the tool in red. Right, the blue frame, enlarged: the red line is the top solid line.}
+  \label{fig:checker}
+\end{figure}
+
+The checkerboard also shows something else, which our three hypotheses say nothing about. Where it is completely blurred, it is almost white (248, on a scale where black is 0 and white is 255), even though it contains as much black as white. And just above the solid line, we can see the black squares shrink and then disappear, as if the white were spilling over the black. Our hypotheses are about where the blur is, how it progresses and how big the spots are, not about how light and dark get mixed. We note this observation, and we come back to it when building the algorithm.
+
+\FloatBarrier
+We move on to the second hypothesis, which we test with the column. With the default settings (figure~\ref{fig:column}, middle), the discs located between the two solid lines are intact, and those that sit right on a solid line are intact to within one or two pixels. Above, the spots are 64 then 107 pixels wide, and the last two 155: the one on the dashed line and the one beyond it are the same size. At the bottom of the image it is the same, to within two pixels. So the blur does grow from the solid line to the dashed line, then stops changing.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.6\textwidth]{figures/fig_test_column.png}
+  \caption{The top of the column in three exports, from the top edge down to 40\% of the height, with the lines of the tool in white and the width of each spot.}
+  \label{fig:column}
+\end{figure}
+
+It remained to check that it really is the dashed line that decides where the blur stops growing. So we moved the top one up to the edge of the image, without touching anything else (``Symmetrical position'' has to be unchecked, otherwise the bottom one moves too). If it is the one that decides, the spots should grow all the way to the top. That is what happens (right): 51, 79, 107 and 141 pixels, with no plateau. The bottom of the image, for its part, has not changed by a single pixel. Hypothesis 2 holds.
+
+We also notice that from one disc to the next, the spot grows by about the same amount: about 45 pixels with the default settings, about 30 when the dashed line is at the edge. So between the two lines, the blur increases steadily.
+
+That leaves the third hypothesis, which we test with the disc. It does turn into a bigger disc (figure~\ref{fig:disc}). It is uniform inside, and its edge goes from black to the gray of the spot in about twenty pixels: it is not a glow that fades out little by little. The bigger the spot, the darker it is: its center is at 236, 181, 121 then 87.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/fig_test_disc.png}
+  \caption{The disc of \texttt{disc.tif} without the effect, then for four values of the Blur slider, at the same scale (200~×~200 pixels), with the width of the spot. At Blur 75 and 100, we can make out a slightly lighter ring near the edge, which we leave aside.}
+  \label{fig:disc}
+\end{figure}
+
+As for the size, the disc is 21 pixels wide without the effect, then 54, 85, 121 and 155 pixels when the slider goes to 25, 50, 75 and 100. The spot grows by about 33 pixels each time we add 25 to the slider: so its size increases steadily with the slider. It is not exactly proportional though, since at Blur 50 the spot is 85 pixels wide, a little more than half of the 155 pixels of Blur 100. These widths only count the brightest part of the spot. If we count all the pixels that are not black, out to the very edge of the spot, it is 62, 109, 136 and 175 pixels wide in total. Hypothesis 3 holds for the shape, and roughly for the size.
+
+Overall, the first two hypotheses hold, and the third one roughly. What remains is the extra thing the checkerboard shows, which none of the three says anything about: once blurred, it is almost white.
+
+\section*{Algorithm}
+
+The results say what the algorithm must produce, not how to compute it. So what remains is to choose a calculation method, as simple as possible, that gives these results back.
+
+We start from the simplest idea for blurring an image: replacing each pixel with a mix of its neighbors. The further away we go to fetch the neighbors, the blurrier it gets. That leaves two things to decide: how far we take the neighbors, and how we mix them.
+
+We start with ``how far''. We call radius the distance up to which we take the neighbors of a pixel. Each test result then gives a rule for this radius:
+
+{\small
+\renewcommand{\arraystretch}{1.3}
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}}
+\hline
+What we observed & Rule for the program \\
+\hline
+Between the two solid lines, nothing changes (checkerboard, column). & In this band, the radius is 0: we keep the original pixel. \\
+At a given height, the blur is the same across the full width (checkerboard). & We compute a single radius for each row of pixels. \\
+The spots grow steadily from the solid line to the dashed line, then stop changing (column). & The radius increases steadily between these two lines, then stays constant. \\
+The spots grow steadily with the slider (disc). & The radius is proportional to the slider. It is a simple approximation. \\
+The top and the bottom of the image are set separately (lake photo). & Each side uses its own slider. \\
+\hline
+\end{tabular}
+\end{center}
+}
+
+To write these rules as a single formula, we use a blur strength between 0 and 1, which only depends on the height: it is 0 in the sharp band, rises steadily from 0 to 1 between a solid line and its dashed line (the transition), and stays at 1 beyond it. The radius is then
+
+\begin{center}
+radius = maximum radius × (slider / 100) × strength
+\end{center}
+
+The maximum radius is the one we get with the slider at 100, beyond the dashed line. It is a number to be set, and we do that just below with the disc.
+
+We move on to ``how to mix''. Here the hypotheses do not give the answer, it is up to us to choose. The simplest mix is the average: we add up the neighbors and divide by how many there are. And to get round spots, like those of the lamps and of the disc, we take the neighbors in a disc around the pixel. With this choice, a white point counts in the average of every pixel less than one radius away from it, so it does spread into a disc, as hypothesis 3 says.
+
+This choice also lets us find the maximum radius, thanks to the disc image (figure~\ref{fig:radius}). Before the blur, everything is black except the white disc, which is 21 pixels wide. Take a black pixel. If the white disc is less than one radius away from it, it has some white among its neighbors, so their average is no longer black and it gets lighter: that is pixel A in the figure. If the white disc is further away, all its neighbors are black and it stays black: that is pixel B. So after the blur, the spot stops one radius away from the edge of the white disc, on each side, and its total width is \mbox{21 + 2 × radius}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig_radius.png}
+  \caption{Left, the white disc before the blur and two black pixels, A and B. The neighbors of a pixel are the pixels inside the dashed circle drawn around it. Right, at the same scale, the spot obtained in PhotoLab at Blur 100. Under each picture, the width of what is not black.}
+  \label{fig:radius}
+\end{figure}
+
+Now at Blur 100, the spot is 175 pixels wide in total. That gives \mbox{2 × radius = 175 - 21 = 154}, so a radius of 77 pixels: this is our maximum radius. It holds for our 4000~×~3000 pixel images, we have not tried another size.
+
+The other values of the slider let us check the fourth rule of the table. At Blur 25, 50 and 75, the spot is 62, 109 and 136 pixels wide in total, and the same calculation gives radii of about 20, 44 and 58 pixels. A radius exactly proportional to the slider would give 19, 39 and 58 pixels. That is close, even if it drifts a little at Blur 50, and we keep the simple rule.
+
+\needspace{12\baselineskip}
+We can now write a first version of the program:
+
+{\small
+\begin{alltt}
+for each row of pixels of the image:
+    strength \(\leftarrow\) 0 in the sharp band, from 0 to 1 in the transition, 1 beyond it
+    slider \(\leftarrow\) the top one or the bottom one, depending on the side
+    radius \(\leftarrow\) 77 × (slider / 100) × strength
+
+    for each pixel of this row:
+        if radius = 0: keep the original pixel
+        else:
+            take the pixels of the original image within one radius of this pixel
+            write their average in the output image
+\end{alltt}
+}
+
+This first version gives back the sharp band, the progression of the blur and round spots whose size follows the slider, since we built it for that. A uniform gray also comes out unchanged, as in the test, because the average of values that are all equal gives that value back. But it does not give back the extra thing the checkerboard shows: with a plain average, an area that is half white, half black would come out at 128, and we measure 248. The radius has nothing to do with it, it is the way of mixing that has to be revised.
+
+So we make a fourth hypothesis: the average is weighted. Each neighbor counts with a weight, larger if it is light, and we divide by the sum of the weights instead of the number of neighbors. This does not contradict hypothesis 1: the position decides the radius, and the value of the pixels only their weight in the average. It would also explain the shrinking black squares, since at the edge of a black square the neighboring white pixels win.
+
+Two of our images let us test this hypothesis, and set the weight. If a white pixel weighs P times more than a black pixel, an area that is half white, half black gives \mbox{255 × P / (P + 1)}, and to find the 248 of the checkerboard we need \mbox{P = 35} or so. The disc gives a second calculation, independent of the first. At Blur 100, the neighborhood of the pixel in the middle of the spot contains about 18,600 pixels, including the 349 white pixels of the starting disc. The weighted average is then \mbox{255 × 349 × P / (349 × P + 18,250)}, and we measure 87 at the center of the spot: we need \mbox{P = 27} or so. Two very different images give about the same P: the hypothesis holds on these two images, and we take \mbox{P = 30}.
+
+For grays, on the other hand, our tests say nothing, since our images only contain black and white. Until we know better, we take a simple formula that is 1 for black and 30 for white: \mbox{weight = 30 / (30 - 29 × v)}, where v is the value of the pixel between 0 (black) and 1 (white). It mostly gives weight to pixels that are almost white: 2 for a mid-gray, 8 for a very light gray. It is a choice, which will have to be checked on the photos, just like the fact of processing red, green and blue separately.
+
+\needspace{24\baselineskip}
+\subsection*{The pseudo-code}
+
+We call y the height of a row of pixels, starting from 0 at the very top, and y1, y2, y3, y4 the heights of the four lines of the tool, from top to bottom: dashed, solid, solid, dashed.
+
+{\small
+\begin{alltt}
+inputs: image, with values from 0 (black) to 1 (white) in red, green and blue
+        slider_top and slider_bottom, the two Blur sliders, from 0 to 100
+        y1 < y2 < y3 < y4, the heights of the four lines
+
+for each row of pixels, at height y:
+    if y < y2:        strength \(\leftarrow\) min(1, (y2 - y) / (y2 - y1))  and  slider \(\leftarrow\) slider_top
+    else if y > y3:   strength \(\leftarrow\) min(1, (y - y3) / (y4 - y3))  and  slider \(\leftarrow\) slider_bottom
+    else:             strength \(\leftarrow\) 0  and  slider \(\leftarrow\) 0
+    radius \(\leftarrow\) 77 × (slider / 100) × strength
+
+    for each pixel of this row, and for red, green and blue:
+        if radius = 0: output \(\leftarrow\) the original pixel
+        else:
+            D \(\leftarrow\) pixels of the original image within one radius of this pixel, itself included
+            output \(\leftarrow\) sum over D of weight(v) × v  /  sum over D of weight(v)
+
+with weight(v) = 30 / (30 - 29 × v)
+\end{alltt}
+}
+
+All this corresponds to the ``Circular'' shape. With ``6 blades'', the disc would have to be replaced by a hexagon (figure~\ref{fig:lamp}).
 
 \end{document}

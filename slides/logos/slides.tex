@@ -1,0 +1,146 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+\usepackage{amsmath, amssymb}
+
+\graphicspath{{./}{logos/}}
+
+\usetheme{Madrid}
+\setbeamertemplate{navigation symbols}{}
+
+\definecolor{ENSbleu}{HTML}{00778B}
+\definecolor{ENSmenthe}{HTML}{00E6B4}
+\definecolor{ENSgris}{HTML}{262626}
+\definecolor{UPSprune}{HTML}{63003C}
+
+\setbeamercolor{structure}{fg=ENSbleu}
+\setbeamercolor{normal text}{fg=ENSgris}
+\setbeamercolor{alerted text}{fg=UPSprune}
+\setbeamercolor{example text}{fg=ENSmenthe!60!black}
+
+\setbeamercolor{palette primary}{fg=white, bg=ENSbleu}
+\setbeamercolor{palette secondary}{fg=white, bg=ENSbleu!75!black}
+\setbeamercolor{palette tertiary}{fg=white, bg=ENSbleu!50!black}
+\setbeamercolor{palette quaternary}{fg=white, bg=ENSgris}
+\setbeamercolor{title}{fg=white, bg=ENSbleu}
+\setbeamercolor{frametitle}{fg=white, bg=ENSbleu}
+\setbeamercolor{filet}{bg=ENSmenthe}
+
+\makeatletter
+\newsavebox{\ENS@logo}
+\AtBeginDocument{%
+  \sbox{\ENS@logo}{\includegraphics[height=0.75cm]{logo-ens-paris-saclay-blanc}}}
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip
+  \begin{beamercolorbox}[wd=\paperwidth, sep=0.25cm]{frametitle}%
+    \usebeamerfont{frametitle}%
+    \begin{minipage}[c]{\dimexpr\paperwidth-0.9cm-\wd\ENS@logo\relax}%
+      \raggedright\strut\insertframetitle\strut\par
+      \ifx\insertframesubtitle\@empty\else
+        {\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}%
+         \insertframesubtitle\strut\par}%
+      \fi
+    \end{minipage}%
+    \hskip 0pt plus 1filll\relax
+    \smash{$\vcenter{\hbox{\usebox{\ENS@logo}}}$}%
+  \end{beamercolorbox}%
+  \nointerlineskip
+  \begin{beamercolorbox}[wd=\paperwidth, ht=1.5pt, dp=0pt]{filet}\end{beamercolorbox}%
+}
+\makeatother
+
+\newcommand{\TODO}{\begin{center}\Large\alert{TO DO}\end{center}}
+
+\title{Miniature Effect -- DxO}
+\subtitle{Machine Intelligence of Image}
+\author{Mouloud Merbouche \and Anh Tuan Le}
+\institute[]{Master MVA - ENS Paris-Saclay}
+\date{\today}
+\titlegraphic{\includegraphics[width=5cm]{logo-ens-paris-saclay-ups}}
+
+\AtBeginSection[]{%
+  \begin{frame}{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+\section{What is a tilt lens?}
+
+\begin{frame}{What is a tilt lens?}
+  \TODO
+\end{frame}
+
+\section{Why is this effect called “miniature scene”?}
+
+\begin{frame}{Why is this effect called “miniature scene”?}
+  \TODO
+\end{frame}
+
+\section{How is it implemented?}
+
+\subsection{Observation}
+
+\begin{frame}{Observation}
+  \TODO
+\end{frame}
+
+\begin{frame}{Observation}
+  \TODO
+\end{frame}
+
+\subsection{Hypothesis formulation}
+
+\begin{frame}{Hypothesis formulation}
+  \TODO
+\end{frame}
+
+\begin{frame}{Hypothesis formulation}
+  \TODO
+\end{frame}
+
+\subsection{Test images and results}
+
+\begin{frame}{Test images and results}
+  \TODO
+\end{frame}
+
+\subsection{Algorithm}
+
+\begin{frame}{Algorithm}
+  \TODO
+\end{frame}
+
+\subsection{Results}
+
+\begin{frame}{Results}
+  \TODO
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Conclusion}
+  \TODO
+\end{frame}
+
+\begin{frame}
+  \begin{beamercolorbox}[sep=8pt, center, colsep=-4bp, rounded=true, shadow=true]{title}
+    \usebeamerfont{title}Thank you for your attention!
+  \end{beamercolorbox}
+  \bigskip
+  \centering{\usebeamercolor[fg]{structure}\Large Questions?\par}
+\end{frame}
+
+\end{document}
